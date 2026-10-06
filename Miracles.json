@@ -1,0 +1,972 @@
+{
+  "children": [
+    {
+      "name": "entry",
+      "type": "group",
+      "attributes": [
+        {
+          "name": "NX_class",
+          "dtype": "string",
+          "values": "NXentry"
+        }
+      ],
+      "children": [
+        {
+          "name": "instrument",
+          "type": "group",
+          "attributes": [
+            {
+              "name": "NX_class",
+              "dtype": "string",
+              "values": "NXinstrument"
+            }
+          ],
+          "children": [
+            {
+              "module": "dataset",
+              "config": {
+                "name": "name",
+                "values": "MIRACLES",
+                "type": "string"
+              }
+            },
+            {
+              "name": "detectors_top",
+              "type": "group",
+              "children": [
+                {
+                  "module": "dataset",
+                  "config": {
+                    "name": "detector_number",
+                    "values": [
+                      [
+                        [
+                          0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47
+                        ]
+                      ]
+                    ],
+                    "type": "int32"
+                  }
+                },
+                {
+                  "module": "dataset",
+                  "config": {
+                    "name": "x_pixel_offset",
+                    "values": [
+                      [
+                        [
+                          1.0, 0.9980267284282716, 0.9921147013144779, 0.9822872507286887, 0.9685831611286311, 0.9510565162951535, 0.9297764858882513, 0.9048270524660195, 0.8763066800438636, 0.8443279255020151, 0.8090169943749475, 0.7705132427757891, 0.7289686274214116, 0.6845471059286886, 0.6374239897486896, 0.587785252292473, 0.5358267949789965, 0.48175367410171516, 0.42577929156507266, 0.36812455268467786, 0.30901699437494745, 0.24868988716485474, 0.18738131458572452, 0.12533323356430426, 0.0627905195293133, -1.6081226496766366e-16, -0.0627905195293134, -0.12533323356430437, -0.18738131458572482, -0.24868988716485485, -0.30901699437494756, -0.368124552684678, -0.4257792915650727, -0.48175367410171543, -0.5358267949789969, -0.587785252292473, -0.6374239897486897, -0.6845471059286887, -0.7289686274214117, -0.7705132427757894, -0.8090169943749473, -0.8443279255020151, -0.8763066800438636, -0.9048270524660196, -0.9297764858882515, -0.9510565162951536, -0.9685831611286311, -0.9822872507286887, -0.9921147013144779
+                        ]
+                      ]
+                    ],
+                    "type": "double"
+                  },
+                  "attributes": [
+                    {
+                      "name": "units",
+                      "dtype": "string",
+                      "values": "m"
+                    }
+                  ]
+                },
+                {
+                  "module": "dataset",
+                  "config": {
+                    "name": "y_pixel_offset",
+                    "values": [
+                      [
+                        [
+                          0.0, 0.06279051952931337, 0.12533323356430426, 0.18738131458572463, 0.2486898871648548, 0.3090169943749474, 0.368124552684678, 0.4257792915650727, 0.4817536741017153, 0.5358267949789967, 0.5877852522924731, 0.6374239897486897, 0.6845471059286887, 0.7289686274214116, 0.7705132427757893, 0.8090169943749475, 0.8443279255020151, 0.8763066800438637, 0.9048270524660196, 0.9297764858882515, 0.9510565162951535, 0.9685831611286311, 0.9822872507286887, 0.9921147013144779, 0.9980267284282716, 1.0, 0.9980267284282716, 0.9921147013144778, 0.9822872507286886, 0.9685831611286311, 0.9510565162951535, 0.9297764858882513, 0.9048270524660195, 0.8763066800438635, 0.844327925502015, 0.8090169943749475, 0.7705132427757893, 0.7289686274214114, 0.6845471059286885, 0.6374239897486895, 0.5877852522924732, 0.5358267949789967, 0.4817536741017152, 0.4257792915650725, 0.36812455268467775, 0.3090169943749471, 0.24868988716485482, 0.18738131458572457, 0.1253332335643041
+                        ]
+                      ]
+                    ],
+                    "type": "double"
+                  },
+                  "attributes": [
+                    {
+                      "name": "units",
+                      "dtype": "string",
+                      "values": "m"
+                    }
+                  ]
+                },
+                {
+                  "module": "dataset",
+                  "config": {
+                    "name": "z_pixel_offset",
+                    "values": [
+                      [
+                        [
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                        ]
+                      ]
+                    ],
+                    "type": "double"
+                  },
+                  "attributes": [
+                    {
+                      "name": "units",
+                      "dtype": "string",
+                      "values": "m"
+                    }
+                  ]
+                },
+                {
+                  "name": "transformations",
+                  "type": "group",
+                  "children": [
+                    {
+                      "module": "dataset",
+                      "config": {
+                        "name": "det_top_translation",
+                        "values": 1.0,
+                        "type": "double"
+                      },
+                      "attributes": [
+                        {
+                          "name": "vector",
+                          "dtype": "double",
+                          "values": [0.0, 0.0, 1.0]
+                        },
+                        {
+                          "name": "depends_on",
+                          "dtype": "string",
+                          "values": "."
+                        },
+                        {
+                          "name": "transformation_type",
+                          "dtype": "string",
+                          "values": "translation"
+                        },
+                        {
+                          "name": "units",
+                          "dtype": "string",
+                          "values": "m"
+                        }
+                      ]
+                    }
+                  ],
+                  "attributes": [
+                    {
+                      "name": "NX_class",
+                      "dtype": "string",
+                      "values": "NXtransformations"
+                    }
+                  ]
+                },
+                {
+                  "module": "dataset",
+                  "config": {
+                    "name": "depends_on",
+                    "values": "/entry/instrument/detectors_top/transformations/det_top_translation",
+                    "type": "string"
+                  }
+                }
+              ],
+              "attributes": [
+                {
+                  "name": "NX_class",
+                  "dtype": "string",
+                  "values": "NXdetector"
+                }
+              ]
+            },
+            {
+              "name": "detectors_bottom",
+              "type": "group",
+              "children": [
+                {
+                  "module": "dataset",
+                  "config": {
+                    "name": "detector_number",
+                    "values": [
+                      [
+                        [
+                          0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47
+                        ]
+                      ]
+                    ],
+                    "type": "int32"
+                  }
+                },
+                {
+                  "module": "dataset",
+                  "config": {
+                    "name": "x_pixel_offset",
+                    "values": [
+                      [
+                        [
+                          1.0, 0.9980267284282716, 0.9921147013144779, 0.9822872507286887, 0.9685831611286311, 0.9510565162951535, 0.9297764858882513, 0.9048270524660195, 0.8763066800438636, 0.8443279255020151, 0.8090169943749475, 0.7705132427757891, 0.7289686274214116, 0.6845471059286886, 0.6374239897486896, 0.587785252292473, 0.5358267949789965, 0.48175367410171516, 0.42577929156507266, 0.36812455268467786, 0.30901699437494745, 0.24868988716485474, 0.18738131458572452, 0.12533323356430426, 0.0627905195293133, -1.6081226496766366e-16, -0.0627905195293134, -0.12533323356430437, -0.18738131458572482, -0.24868988716485485, -0.30901699437494756, -0.368124552684678, -0.4257792915650727, -0.48175367410171543, -0.5358267949789969, -0.587785252292473, -0.6374239897486897, -0.6845471059286887, -0.7289686274214117, -0.7705132427757894, -0.8090169943749473, -0.8443279255020151, -0.8763066800438636, -0.9048270524660196, -0.9297764858882515, -0.9510565162951536, -0.9685831611286311, -0.9822872507286887, -0.9921147013144779
+                        ]
+                      ]
+                    ],
+                    "type": "double"
+                  },
+                  "attributes": [
+                    {
+                      "name": "units",
+                      "dtype": "string",
+                      "values": "m"
+                    }
+                  ]
+                },
+                {
+                  "module": "dataset",
+                  "config": {
+                    "name": "y_pixel_offset",
+                    "values": [
+                      [
+                        [
+                          0.0, 0.06279051952931337, 0.12533323356430426, 0.18738131458572463, 0.2486898871648548, 0.3090169943749474, 0.368124552684678, 0.4257792915650727, 0.4817536741017153, 0.5358267949789967, 0.5877852522924731, 0.6374239897486897, 0.6845471059286887, 0.7289686274214116, 0.7705132427757893, 0.8090169943749475, 0.8443279255020151, 0.8763066800438637, 0.9048270524660196, 0.9297764858882515, 0.9510565162951535, 0.9685831611286311, 0.9822872507286887, 0.9921147013144779, 0.9980267284282716, 1.0, 0.9980267284282716, 0.9921147013144778, 0.9822872507286886, 0.9685831611286311, 0.9510565162951535, 0.9297764858882513, 0.9048270524660195, 0.8763066800438635, 0.844327925502015, 0.8090169943749475, 0.7705132427757893, 0.7289686274214114, 0.6845471059286885, 0.6374239897486895, 0.5877852522924732, 0.5358267949789967, 0.4817536741017152, 0.4257792915650725, 0.36812455268467775, 0.3090169943749471, 0.24868988716485482, 0.18738131458572457, 0.1253332335643041
+                        ]
+                      ]
+                    ],
+                    "type": "double"
+                  },
+                  "attributes": [
+                    {
+                      "name": "units",
+                      "dtype": "string",
+                      "values": "m"
+                    }
+                  ]
+                },
+                {
+                  "module": "dataset",
+                  "config": {
+                    "name": "z_pixel_offset",
+                    "values": [
+                      [
+                        [
+                          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+                        ]
+                      ]
+                    ],
+                    "type": "double"
+                  },
+                  "attributes": [
+                    {
+                      "name": "units",
+                      "dtype": "string",
+                      "values": "m"
+                    }
+                  ]
+                },
+                {
+                  "name": "transformations",
+                  "type": "group",
+                  "children": [
+                    {
+                      "module": "dataset",
+                      "config": {
+                        "name": "det_bottom_translation",
+                        "values": -1.0,
+                        "type": "double"
+                      },
+                      "attributes": [
+                        {
+                          "name": "vector",
+                          "dtype": "double",
+                          "values": [0.0, 0.0, 1.0]
+                        },
+                        {
+                          "name": "depends_on",
+                          "dtype": "string",
+                          "values": "."
+                        },
+                        {
+                          "name": "transformation_type",
+                          "dtype": "string",
+                          "values": "translation"
+                        },
+                        {
+                          "name": "units",
+                          "dtype": "string",
+                          "values": "m"
+                        }
+                      ]
+                    }
+                  ],
+                  "attributes": [
+                    {
+                      "name": "NX_class",
+                      "dtype": "string",
+                      "values": "NXtransformations"
+                    }
+                  ]
+                },
+                {
+                  "module": "dataset",
+                  "config": {
+                    "name": "depends_on",
+                    "values": "/entry/instrument/detectors_bottom/transformations/det_bottom_translation",
+                    "type": "string"
+                  }
+                }
+              ],
+              "attributes": [
+                {
+                  "name": "NX_class",
+                  "dtype": "string",
+                  "values": "NXdetector"
+                }
+              ]
+            },
+            {
+              "name": "ana_top1",
+              "type": "group",
+              "children": [
+                {
+                  "module": "dataset",
+                  "config": {
+                    "name": "crystal_number",
+                    "values": [
+                      [
+                        [
+                          0, 1, 2, 3, 4, 5, 6, 7
+                        ]
+                      ]
+                    ],
+                    "type": "int32"
+                  }
+                },
+                {
+                  "module": "dataset",
+                  "config": {
+                    "name": "x_pixel_offset",
+                    "values": [
+                      [
+                        [
+                          0.07981350706578208, 0.0367952743394536, 0.043555000630972174, 0.0005367679046437042, 0.05031472692249074, 0.007296494196162273, 0.014056220487680836, -0.02896201223864763
+                        ]
+                      ]
+                    ],
+                    "type": "double"
+                  },
+                  "attributes": [
+                    {
+                      "name": "units",
+                      "dtype": "string",
+                      "values": "m"
+                    }
+                  ]
+                },
+                {
+                  "module": "dataset",
+                  "config": {
+                    "name": "y_pixel_offset",
+                    "values": [
+                      [
+                        [
+                          -0.05061706532025851, 0.010819338001415888, -0.030226497771583056, 0.031209905550091347, -0.071272333544582, -0.009835930222907602, -0.05088176599590655, 0.010554637325767852
+                        ]
+                      ]
+                    ],
+                    "type": "double"
+                  },
+                  "attributes": [
+                    {
+                      "name": "units",
+                      "dtype": "string",
+                      "values": "m"
+                    }
+                  ]
+                },
+                {
+                  "module": "dataset",
+                  "config": {
+                    "name": "z_pixel_offset",
+                    "values": [
+                      [
+                        [
+                          -0.1709975041198336, -0.1709975041198336, -0.08628743703120623, -0.08628743703120623, -0.0015773699425788343, -0.0015773699425788343, 0.08313269714604858, 0.08313269714604858
+                        ]
+                      ]
+                    ],
+                    "type": "double"
+                  },
+                  "attributes": [
+                    {
+                      "name": "units",
+                      "dtype": "string",
+                      "values": "m"
+                    }
+                  ]
+                },
+                {
+                  "name": "transformations",
+                  "type": "group",
+                  "children": [
+                    {
+                      "module": "dataset",
+                      "config": {
+                        "name": "x_translation",
+                        "values": 1.59278779445798,
+                        "type": "double"
+                      },
+                      "attributes": [
+                        {
+                          "name": "vector",
+                          "dtype": "double",
+                          "values": [
+                            1.0,
+                            0.0,
+                            0.0
+                          ]
+                        },
+                        {
+                          "name": "depends_on",
+                          "dtype": "string",
+                          "values": "."
+                        },
+                        {
+                          "name": "transformation_type",
+                          "dtype": "string",
+                          "values": "translation"
+                        },
+                        {
+                          "name": "units",
+                          "dtype": "string",
+                          "values": "m"
+                        }
+                      ]
+                    },
+                    {
+                      "module": "dataset",
+                      "config": {
+                        "name": "y_translation",
+                        "values": 1.1517077595172238,
+                        "type": "double"
+                      },
+                      "attributes": [
+                        {
+                          "name": "vector",
+                          "dtype": "double",
+                          "values": [
+                            0.0,
+                            1.0,
+                            0.0
+                          ]
+                        },
+                        {
+                          "name": "depends_on",
+                          "dtype": "string",
+                          "values": "/entry/instrument/ana_top1/transformations/x_translation"
+                        },
+                        {
+                          "name": "transformation_type",
+                          "dtype": "string",
+                          "values": "translation"
+                        },
+                        {
+                          "name": "units",
+                          "dtype": "string",
+                          "values": "m"
+                        }
+                      ]
+                    },
+                    {
+                      "module": "dataset",
+                      "config": {
+                        "name": "z_translation",
+                        "values": 0.35958444380752264,
+                        "type": "double"
+                      },
+                      "attributes": [
+                        {
+                          "name": "vector",
+                          "dtype": "double",
+                          "values": [
+                            0.0,
+                            0.0,
+                            1.0
+                          ]
+                        },
+                        {
+                          "name": "depends_on",
+                          "dtype": "string",
+                          "values": "/entry/instrument/ana_top1/transformations/y_translation"
+                        },
+                        {
+                          "name": "transformation_type",
+                          "dtype": "string",
+                          "values": "translation"
+                        },
+                        {
+                          "name": "units",
+                          "dtype": "string",
+                          "values": "m"
+                        }
+                      ]
+                    },
+                    {
+                      "module": "dataset",
+                      "config": {
+                        "name": "yaw",
+                        "values": -154.91702118925755,
+                        "type": "double"
+                      },
+                      "attributes": [
+                        {
+                          "name": "vector",
+                          "dtype": "double",
+                          "values": [
+                            0.0,
+                            0.0,
+                            1.0
+                          ]
+                        },
+                        {
+                          "name": "depends_on",
+                          "dtype": "string",
+                          "values": "/entry/instrument/ana_top1/transformations/z_translation"
+                        },
+                        {
+                          "name": "transformation_type",
+                          "dtype": "string",
+                          "values": "rotation"
+                        },
+                        {
+                          "name": "units",
+                          "dtype": "string",
+                          "values": "deg"
+                        }
+                      ]
+                    },
+                    {
+                      "module": "dataset",
+                      "config": {
+                        "name": "pitch",
+                        "values": -8.656551055285941,
+                        "type": "double"
+                      },
+                      "attributes": [
+                        {
+                          "name": "vector",
+                          "dtype": "double",
+                          "values": [
+                            0.0,
+                            1.0,
+                            0.0
+                          ]
+                        },
+                        {
+                          "name": "depends_on",
+                          "dtype": "string",
+                          "values": "/entry/instrument/ana_top1/transformations/yaw"
+                        },
+                        {
+                          "name": "transformation_type",
+                          "dtype": "string",
+                          "values": "rotation"
+                        },
+                        {
+                          "name": "units",
+                          "dtype": "string",
+                          "values": "deg"
+                        }
+                      ]
+                    }
+                  ],
+                  "attributes": [
+                    {
+                      "name": "NX_class",
+                      "dtype": "string",
+                      "values": "NXtransformations"
+                    }
+                  ]
+                }
+              
+              ],
+              "attributes": [
+                {
+                  "name": "NX_class",
+                  "dtype": "string",
+                  "values": "NXcrystal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "neutron_prod_info",
+          "type": "group",
+          "attributes": [
+            {
+              "dtype": "string",
+              "name": "NX_class",
+              "values": "NXsource"
+            }
+          ],
+          "children": [
+            {
+              "config": {
+                "name": "name",
+                "values": "accelerator",
+                "dtype": "string"
+              },
+              "module": "dataset"
+            },
+            {
+              "config": {
+                "name": "type",
+                "values": "Spallation Neutron Source",
+                "dtype": "string"
+              },
+              "module": "dataset"
+            },
+            {
+              "config": {
+                "name": "probe",
+                "values": "proton",
+                "dtype": "string"
+              },
+              "module": "dataset"
+            },
+            {
+              "name": "pulse_charge",
+              "type": "group",
+              "attributes": [
+                {
+                  "name": "NX_class",
+                  "dtype": "string",
+                  "values": "NXlog"
+                }
+              ],
+              "children": [
+                {
+                  "module": "f144",
+                  "config": {
+                    "source": "A2T-130LWU:PBI-BCM-001:PulseChargeR",
+                    "topic": "tn_data_general",
+                    "dtype": "double",
+                    "value_units": "uC"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "flat_top_current",
+              "type": "group",
+              "attributes": [
+                {
+                  "name": "NX_class",
+                  "dtype": "string",
+                  "values": "NXlog"
+                }
+              ],
+              "children": [
+                {
+                  "module": "f144",
+                  "config": {
+                    "source": "A2T-130LWU:PBI-BCM-001:FlatTopCurrentR",
+                    "topic": "tn_data_general",
+                    "dtype": "double",
+                    "value_units": "mA"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "fsm_machine_active",
+              "type": "group",
+              "attributes": [
+                {
+                  "name": "NX_class",
+                  "dtype": "string",
+                  "values": "NXlog"
+                }
+              ],
+              "children": [
+                {
+                  "module": "f144",
+                  "config": {
+                    "source": "CrS-CMS:SC-FSM-007x:STS_Active",
+                    "topic": "tn_data_general",
+                    "dtype": "double",
+                    "value_units": ""
+                  }
+                }
+              ]
+            },
+            {
+              "name": "pulse_width",
+              "type": "group",
+              "attributes": [
+                {
+                  "name": "NX_class",
+                  "dtype": "string",
+                  "values": "NXlog"
+                }
+              ],
+              "children": [
+                {
+                  "module": "f144",
+                  "config": {
+                    "source": "A2T-130LWU:PBI-BCM-001:PulseWidthR",
+                    "topic": "tn_data_general",
+                    "dtype": "double",
+                    "value_units": "ms"
+                  }
+                }
+              ]
+            },
+            {
+              "config": {
+                "name": "target_material",
+                "values": "W",
+                "dtype": "string"
+              },
+              "module": "dataset"
+            },
+            {
+              "name": "cryo_tt_82025_temperature",
+              "type": "group",
+              "attributes": [
+                {
+                  "name": "NX_class",
+                  "dtype": "string",
+                  "values": "NXlog"
+                }
+              ],
+              "children": [
+                {
+                  "module": "f144",
+                  "config": {
+                    "source": "CrS-CMS:Cryo-TT-82025:MeasValue",
+                    "topic": "tn_data_general",
+                    "dtype": "double",
+                    "value_units": "K"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "cryo_tt_82027_temperature",
+              "type": "group",
+              "attributes": [
+                {
+                  "name": "NX_class",
+                  "dtype": "string",
+                  "values": "NXlog"
+                }
+              ],
+              "children": [
+                {
+                  "module": "f144",
+                  "config": {
+                    "source": "CrS-CMS:Cryo-TT-82027:MeasValue",
+                    "topic": "tn_data_general",
+                    "dtype": "double",
+                    "value_units": "K"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "cryo_tt_82029_temperature",
+              "type": "group",
+              "attributes": [
+                {
+                  "name": "NX_class",
+                  "dtype": "string",
+                  "values": "NXlog"
+                }
+              ],
+              "children": [
+                {
+                  "module": "f144",
+                  "config": {
+                    "source": "CrS-CMS:Cryo-TT-82029:MeasValue",
+                    "topic": "tn_data_general",
+                    "dtype": "double",
+                    "value_units": "K"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "cryo_tt_82031_temperature",
+              "type": "group",
+              "attributes": [
+                {
+                  "name": "NX_class",
+                  "dtype": "string",
+                  "values": "NXlog"
+                }
+              ],
+              "children": [
+                {
+                  "module": "f144",
+                  "config": {
+                    "source": "CrS-CMS:Cryo-TT-82031:MeasValue",
+                    "topic": "tn_data_general",
+                    "dtype": "double",
+                    "value_units": "K"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "cryo_tt_82033_temperature",
+              "type": "group",
+              "attributes": [
+                {
+                  "name": "NX_class",
+                  "dtype": "string",
+                  "values": "NXlog"
+                }
+              ],
+              "children": [
+                {
+                  "module": "f144",
+                  "config": {
+                    "source": "CrS-CMS:Cryo-TT-82033:MeasValue",
+                    "topic": "tn_data_general",
+                    "dtype": "double",
+                    "value_units": "K"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "transformations",
+              "type": "group",
+              "children": [
+                {
+                  "module": "dataset",
+                  "config": {
+                    "name": "z_offset",
+                    "values": -100.0,
+                    "dtype": "float"
+                  },
+                  "attributes": [
+                    {
+                      "name": "transformation_type",
+                      "values": "translation"
+                    },
+                    {
+                      "name": "depends_on",
+                      "values": ".",
+                      "dtype": "string"
+                    },
+                    {
+                      "name": "vector",
+                      "dtype": "float",
+                      "values": [0, 0, 1]
+                    },
+                    {
+                      "name": "units",
+                      "dtype": "string",
+                      "values": "m"
+                    }
+                  ]
+                }
+              ],
+              "attributes": [
+                {
+                  "name": "NX_class",
+                  "values": "NXtransformations"
+                }
+              ]
+            },
+            {
+              "module": "dataset",
+              "config": {
+                "name": "depends_on",
+                "values": ".",
+                "dtype": "string"
+              }
+            }
+          ]
+        },
+        {
+          "name": "sample",
+          "type": "group",
+          "attributes": [
+            {
+              "name": "NX_class",
+              "dtype": "string",
+              "values": "NXsample"
+            }
+          ],
+          "children": [
+            {
+              "module": "dataset",
+              "config": {
+                "name": "name",
+                "values": "some sample",
+                "type": "string"
+              }
+            }
+          ]
+        },
+        {
+          "name": "data",
+          "type": "group",
+          "attributes": [
+            {
+              "name": "NX_class",
+              "dtype": "string",
+              "values": "NXdata"
+            }
+          ],
+          "children": [
+            {
+              "module": "link",
+              "config": {
+                "name": "data",
+                "source": "/entry/instrument/detector/data"
+              }
+            }
+          ]
+        },
+        {
+          "attributes": [
+            {
+              "dtype": "string",
+              "name": "NX_class",
+              "values": "NXcite"
+            }
+          ],
+          "children": [
+            {
+              "config": {
+                "name": "description",
+                "type": "string",
+                "values": "Neutron events were stored in NeXus files via the ESS DAQ (European Spallation Source Data AcQuisition) system"
+              },
+              "module": "dataset"
+            },
+            {
+              "config": {
+                "name": "doi",
+                "type": "string",
+                "values": "https://doi.org/10.1088/1748-0221/13/11/T11002"
+              },
+              "module": "dataset"
+            },
+            {
+              "config": {
+                "name": "bibtex",
+                "type": "string",
+                "values": "@article{Mukai_2018,\r\ndoi = {10.1088/1748-0221/13/10/T10001},\r\nurl = {https://dx.doi.org/10.1088/1748-0221/13/10/T10001},\r\nyear = {2018},\r\nmonth = {oct},\r\npublisher = {},\r\nvolume = {13},\r\nnumber = {10},\r\npages = {T10001},\r\nauthor = {A.H.C. Mukai and M.J. Clarke and M.J. Christensen and J.M.C. Nilsson and M.G. Shetty and M. Brambilla and D. Werder and M. K\u00f6nnecke and J. Harper and M.D. Jones and F.A. Akeroyd and C. Reis and G. Kourousias and T.S. Richter},\r\ntitle = {Architecture of the data aggregation and streaming system for the European Spallation Source neutron instrument suite},\r\njournal = {Journal of Instrumentation},\r\nabstract = {The European Spallation Source (ESS) will provide long   neutron pulses for experiments on a suite of different   instruments. Most of these will perform neutron data acquisition in   event mode, i.e. each detected neutron will be characterised by one   absolute timestamp and pixel identifier pair. Slow controls metadata   from EPICS, such as sample environment measurements and motor   positions, will also be timestamped at their source, so that all   data and metadata are streamed as a list of events instead of   histograms. A flexible data aggregation and streaming system is   being developed combining both open source third-party software and   in-house development. This is to be used at ESS and other neutron   scattering facilities like ISIS and SINQ, replacing legacy solutions   by a shared software collection maintained by a cross-facility   effort. The architecture of the Apache Kafka-based system, its   metadata forwarding and NeXus file writing components are presented,   along with test results demonstrating their integration and the   scalability in terms of performance.}\r\n}\r\n"
+              },
+              "module": "dataset"
+            },
+            {
+              "config": {
+                "name": "endnote",
+                "type": "string",
+                "values": "%0 Journal Article\n%T Architecture of the data aggregation and streaming system for the European Spallation Source neutron instrument suite\n%A Mukai, A. H. C.\n%A Clarke, M. J.\n%A Christensen, M. J.\n%A Nilsson, J. M. C.\n%A Shetty, M. G.\n%A Brambilla, M.\n%A Werder, D.\n%A K\u00f6nnecke, M.\n%A Harper, J.\n%A Jones, M. D.\n%A Akeroyd, F. A.\n%A Reis, C.\n%A Kourousias, G.\n%A Richter, T. S.\n%J Journal of Instrumentation\n%D 2018\n%8 oct\n%V 13\n%N 10\n%F Mukai_2018\n%X The European Spallation Source (ESS) will provide long neutron pulses for experiments on a suite of different instruments. Most of these will perform neutron data acquisition in event mode, i.e. each detected neutron will be characterised by one absolute timestamp and pixel identifier pair. Slow controls metadata from EPICS, such as sample environment measurements and motor positions, will also be timestamped at their source, so that all data and metadata are streamed as a list of events instead of histograms. A flexible data aggregation and streaming system is being developed combining both open source third-party software and in-house development. This is to be used at ESS and other neutron scattering facilities like ISIS and SINQ, replacing legacy solutions by a shared software collection maintained by a cross-facility effort. The architecture of the Apache Kafka-based system, its metadata forwarding and NeXus file writing components are presented, along with test results demonstrating their integration and the scalability in terms of performance.\n%U https://dx.doi.org/10.1088/1748-0221/13/10/T10001\n%U http://dx.doi.org/10.1088/1748-0221/13/10/T10001\n%P 10001"
+              },
+              "module": "dataset"
+            }
+          ],
+          "name": "daq_publication",
+          "type": "group"
+        }
+      ]
+    }
+  ]
+}
