@@ -1,0 +1,1224 @@
+/*****************************************************************************
+* Instrument: MIRACLES. Backscattering instrument at ESS.
+* code written by Christian Beck: christian.beck@ess.eu
+* This version is initially based on the following McStas file
+        - authored by Roberto Martinez-Ballarin, Paula Luna, Iñigo Herranz, Mads Bertelsen, Damian Martin Rodriguez and Felix J Villacorta 
+        - 24/01/2022
+        - Origin: ESS Bilbao/Niels Bohr Institute/European Spallation Source
+* Version of McStas: 3.7.2
+* Chopper settings are written into hdf file
+*******************************************************************************/
+
+DEFINE INSTRUMENT ESS_MIRACLES(
+        SRC_MIN=  1.27, SRC_MAX= 51.27, string chopperfile="choppers.cfg",
+        ANA_POS= 48.36, ANA_SEC= 25.92,  ANA_RAD=  2.5,
+	ANA_ROT= 0.0,   ANA_ELE=  0.074, ANA_CUR=  2.5,
+        ANA_Facette= 0.05, ANA_Facette_xi =0.1,
+        f_QE=0.9,f_tun=0,gamma=10,n_pulses=5,
+        int sendPackets=0)
+
+
+//
+// INSTRUMENT PARAMETER DESCRIPTION
+//
+// SRC_MIN    [A]  :  Neutron Source wavelength range lower limit
+// SRC_MAX    [A]  :  Neutron Source wavelength range upper limit
+//
+// chopperfile     : contains chopper settings
+//
+// RAD_COL    []   :  Radial Collimator (choice ON/OFF)
+//
+// ANA_POS  [deg]  :  angle of reference for the analyzer system position with respect to z-axis; (77.5 deg -> 45+9.48 deg = 54.48 deg)
+// ANA_SEC  [deg]  :  angle of a single analyzer sector
+// ANA_RAD    [m]  :  analyzer system radius (fixed 2.5 m, same as analyzer curvature)
+// ANA_ROT  [deg]  :  pitch-rotation angle for a single analyzer panel
+// ANA_ELE    [m]  :  elevation heigth for a single analyzer panel
+// ANA_CUR    [m]  :  analyzer radius of curvature
+//
+
+
+//
+// NOTE: redundant parameters, you can reduce:
+//       ANA_ROT=-atan(ANA_ELE/ANA_RAD)=-atan(0.071/2.5)=-1.63
+//
+// NOTE: RADCOL focal point F as a function of the instrument pars:
+//       F=2*ANA_RAD*SAM_RAD/(DET_RAD+SAM_RAD) ~ 0.4 m
+//
+//       Once F is determined, find the pairs (r1, r2) to define the radcol
+//       and also the number of slits.
+//
+// NOTE: Analyzer span angles (with respect to z-axis)
+//       alpha1 =   9.48 deg
+//       alpha2 = 165.00 deg
+//       span_analyzer_bank = alpha2-alpha1 = 
+//       span_analyzer_sector = span_analyzer_bank / 6   // 6 sectors
+//
+//       ROT1 = ref. angle upper right bank = alpha1 + 1.5*span_analyzer_sector = 48.36 deg
+//       ROT2 = 90 + ROT1 - alpha1 = 90 + 1.5*span_analyzer_sector 
+//
+// OPTION_1: PWD choppers at 7.7 m / PS chopper at 8.2 m / FO chopper at 54.5 m
+//
+
+
+DECLARE
+%{
+  char sendTo[256]; // ip address for udp data transmission
+  double rotinstrument=-1.0;
+
+  double lambdacentral=6.27; // unused,original in Miracles Primary (but chop'd to 3A anyway!)
+
+
+
+//===========================================================================================
+// Chopper configuration (loaded from file)
+//===========================================================================================
+#define MAX_CHOPPERS 4
+
+int NCHOP;
+
+double CHOP_x[MAX_CHOPPERS];
+double CHOP_y[MAX_CHOPPERS];
+double CHOP_z[MAX_CHOPPERS];
+double CHOP_rad[MAX_CHOPPERS];
+double CHOP_nu[MAX_CHOPPERS];
+double CHOP_nslit[MAX_CHOPPERS];
+double CHOP_theta0[MAX_CHOPPERS];
+double CHOP_yheight[MAX_CHOPPERS];
+double CHOP_phase[MAX_CHOPPERS];
+
+  //
+  double ROT1;      // for ANA_POS (the three upper right analyzers)
+  double ROT2;      // for ANA_POS (the three upper left analyzers)
+  double dROT;      // for ANA_SEC
+  double DSPREAD;   //
+
+  // declaration of Analyzer Plate (X) and (Y) dimensions [m]
+  // initiallization must be done later
+  double APX; // APX=dROT*DEG2RAD*ANA_RAD*0.9;
+  double APY; // APY=0.94;
+
+  //int flag_Mask1; // a boolean though
+  
+  //===========================================================================================
+  //___________________________________________________________________________________________
+
+  //===========================================================================================
+  // GENERAL GUIDE PARAMETERS
+  //___________________________________________________________________________________________
+  const double gravityeffect = -9.81; //[m/s^2] 0-value disables gravity
+  const double dist_guide_sample = 0.300; //Distance from the end of the guide to the sample position [m]
+  double gapguides = 1e-3; //Gap between guides [m]
+  double gapchoppers = 1E-2; //Gap between choppers [m]
+  double gapchopperguide = 1E-2; //Gap between guide and chopper [m]
+  double guide[19][10] = { //Geometric guide parameters
+    //w1[m], h1[m], w2[m], h2[m], l:individual piece[m], x[m], y[m], dist[m], curv[m], N
+    {0.0662 , 0.0482 , 0.0652 , 0.0522 , 0.5 ,  0.0, 0.0, 0.0, 0.0 , 1 }, //guide G1a
+    {0.0652 , 0.0522 , 0.0642 , 0.0558 , 0.5 ,  0.0, 0.0, 0.0, 0.0 , 1 }, //guide G1b
+    {0.0642 , 0.0558 , 0.0632 , 0.0591 , 0.5 ,  0.0, 0.0, 0.0, 0.0 , 1 }, //guide G1c
+    {0.0632 , 0.0591 , 0.0612 , 0.0651 , 1.0 ,  0.0, 0.0, 0.0, 0.0 , 1 }, //guide G2a
+    {0.0612 , 0.0651 , 0.0592 , 0.0703 , 0.98 , 0.0, 0.0, 0.0, 0.0 , 1 }, //guide G2b -->END of NBOA
+    {0.0592 , 0.0703 , 0.0546 , 0.0805 , 2.25 , 0.0, 0.0, 0.0, 0.0 , 1 }, //guide G3
+    {0.0546 , 0.0805 , 0.0582 , 0.083  , 0.5 ,  0.0, 0.0, 0.0, 0.0 , 1 }, //guide G4 - PWD-PS
+    {0.0582 , 0.083  , 0.08   , 0.10   , 4.5 ,  0.0, 0.0, 0.0, 0.0 , 1 }, //guide G5
+    {0.080  , 0.10   , 0.08   , 0.10   , 1.0 ,  0.0, 0.0, 0.0, 2025, 36}, //guide G6 - curved
+    {0.080  , 0.10   , 0.105  , 0.105  , 6.2 ,  0.0, 0.0, 0.0, 0.0 , 1 }, //guide G7
+    {0.105  , 0.105  , 0.13   , 0.11   , 7.8 ,  0.0, 0.0, 0.0, 0.0 , 1 }, //guide G8
+    {0.13   , 0.11   , 0.13   , 0.11   , 19 ,   0.0, 0.0, 0.0, 0.0 , 1 }, //guide G9a - long st
+    {0.13   , 0.11   , 0.13   , 0.11   , 64.1,  0.0, 0.0, 0.0, 0.0 , 1 }, //guide G9b - long st
+    {0.13   , 0.11   , 0.113  , 0.10   , 8.0 ,  0.0, 0.0, 0.0, 0.0 , 1 }, //guide G10
+    {0.113  , 0.10   , 0.0961 , 0.083  , 5.0 ,  0.0, 0.0, 0.0, 0.0 , 1 }, //guide G11
+    {0.0961 , 0.083  , 0.0777 , 0.0689 , 1.5 ,  0.0, 0.0, 0.0, 0.0 , 1 }, //guide G12
+    {0.0777 , 0.0689 , 0.061  , 0.0549 , 1.0 ,  0.0, 0.0, 0.0, 0.0 , 1 }, //guide G13
+    {0.061  , 0.0549 , 0.050  , 0.0454 , 0.5 ,  0.0, 0.0, 0.0, 0.0 , 1 }, //guide G14
+    {0.050  , 0.0454 , 0.0217 , 0.0199 , 0.8 ,  0.0, 0.0, 0.0, 0.0 , 1 }, //guide G15
+  };
+
+  double m[19][4] = { //Coating guide parameters.
+    //mleft, mright, mtop, mbottom
+    {4.0, 4.0, 4.0, 4.0}, // guide G1a
+    {4.0, 4.0, 4.0, 4.0}, // guide G1b
+    {4.0, 4.0, 4.0, 4.0}, // guide G1c
+    {4.0, 4.0, 4.0, 4.0}, // guide G2a
+    {4.0, 4.0, 4.0, 4.0}, // guide G2b --> END of NBOA
+    {4.0, 4.0, 4.0, 4.0}, // guide G3
+    {2.0, 2.0, 2.5, 2.5}, // guide G4 -PWD-PS
+    {3.0, 3.0, 2.5, 2.5}, // guide G5
+    {2.0, 2.5, 2.0, 2.0}, // guide G6 - curved
+    {1.5, 1.5, 2.0, 2.0}, // guide G7
+    {1.5, 1.5, 2.0, 2.0}, // guide G8
+    {1.5, 1.5, 1.5, 1.5}, // guide G9a - long straight
+    {1.5, 1.5, 1.5, 1.5}, // guide G9b - long straight
+    {2.0, 2.0, 2.0, 2.0}, // guide G10
+    {2.0, 2.0, 2.0, 2.0}, // guide G11
+    {2.5, 2.5, 2.5, 2.5}, // guide G12
+    {3.0, 3.0, 3.0, 3.0}, // guide G13
+    {4.0, 4.0, 4.0, 4.0}, // guide G14
+    {5.0, 5.0, 5.0, 5.0}, // guide G15
+  };
+
+
+
+  // NEW: variables for the analyzer
+  double q_si111 = 2.003886241; //Q [AA-1] Magnitude of scatt. vector(dafault though)
+
+
+  // detector tubes
+  double det_ROT0=11.1;
+  double det_dROT=3.24;
+%}
+
+
+USERVARS
+%{
+  double n_theta; // For when condition on analyzers
+  double n_zheta; // For when condition on analyzers (upper vs lower bank, zheta for z-cylindric coords)
+  double t0_SAM; // time recorded at sample position (for Event_broadcaster)
+%}
+
+
+
+//===========================================================================================
+// The INITIALIZE section is executed when the simulation starts
+// (C code). You may use them as component parameter values.
+//___________________________________________________________________________________________
+INITIALIZE
+%{
+
+// buffering instrument parameters
+// and initiallization of some previously declared variables
+//
+
+//
+ROT1=ANA_POS;
+ROT2=ROT1+90-9.48  -2.5; // 2.5 deg to adjust
+dROT=ANA_SEC; // dROT = (angle2-angle1)/(6 sectors)=(165 deg - 9.5 deg )/6 = 25.92 deg
+
+DSPREAD=0.00035; // for faster simulation
+
+APX=dROT*DEG2RAD*ANA_RAD*0.80; // factor 0.9 just to avoid overlapping of plates
+APY=0.94*0.80;                    // fixed value 0.94 in vertical, factors also to reduce size and overlaping
+
+ANA_ELE = APY/2;
+ANA_ROT = (-atan((APY/2-0.074)/ANA_RAD)) * (180/3.14);
+
+//--------------
+// Define fixed Chopper parameters
+//--------------
+for (int i = 0; i < MAX_CHOPPERS; i++) {
+  CHOP_rad[i]     = 0.35;
+  CHOP_nslit[i]   = 1;
+  CHOP_theta0[i]  = 12;
+  CHOP_yheight[i] = 0.10;
+}
+
+CHOP_theta0[2]=15;
+CHOP_theta0[3]=105;
+CHOP_yheight[3]=0.15;
+
+//===========================================================================================
+// Read chopper frequency/phase configuration file
+//===========================================================================================
+{
+  FILE *f;
+  char line[512];  /* Important: char array, not char *line[512] */
+  char *c;
+
+  f = fopen(chopperfile, "r");
+
+  if (!f) {
+    fprintf(stderr, "ERROR: Cannot open chopper file %s\n", chopperfile);
+    exit(1);
+  }
+
+  NCHOP = 0;
+
+  while (fgets(line, sizeof(line), f)) {
+
+    /* Remove inline comments. This also turns a full-line comment into "". */
+    c = strchr(line, '#');
+    if (c)
+      *c = '\0';
+
+    /* Skip empty or whitespace-only lines. */
+    if (strspn(line, " \t\r\n") == strlen(line))
+      continue;
+
+    /* Safety check. */
+    if (NCHOP >= MAX_CHOPPERS) {
+      fprintf(stderr, "ERROR: Too many choppers (max %d)\n", MAX_CHOPPERS);
+      fclose(f);
+      exit(1);
+    }
+
+    /*
+     * Each line must contain:
+     *
+     *     frequency[Hz]   phase[deg]
+     */
+    if (sscanf(line, "%lf %lf",
+        &CHOP_nu[NCHOP],
+        &CHOP_phase[NCHOP]) == 2) {
+
+      NCHOP++;
+
+    } else {
+      fprintf(stderr,
+        "WARNING: Invalid chopper line ignored: %s\n", line);
+    }
+  }
+
+  fclose(f);
+
+  printf("Loaded %d chopper frequency/phase settings from %s\n",
+    NCHOP, chopperfile);
+}
+
+%}
+//===========================================================================================
+
+TRACE
+
+//_______________________________________________________________________________________
+// MODERATOR SOURCE
+//_______________________________________________________________________________________
+COMPONENT origin = Progress_bar()
+	AT (0,0,0) ABSOLUTE
+
+COMPONENT Source = ESS_butterfly(
+        yheight=0.03,
+        cold_frac=0.5,
+        sector="W", beamline=5,
+        c_performance=1,
+        n_pulses=n_pulses,
+        dist = 1.9, focus_xw = guide[0][0], focus_yh = guide[0][1],
+        Lmin=SRC_MIN, Lmax=SRC_MAX)
+        AT (0.0, 0.0, 0.0) RELATIVE origin
+EXTEND %{
+%}
+
+COMPONENT ISCS = Arm()
+        AT (0.03868,0,0.01821) RELATIVE Source
+
+COMPONENT InstrArm = Arm()
+        AT (0,0,0) RELATIVE ISCS
+        ROTATED (0,rotinstrument,0) RELATIVE ISCS
+
+COMPONENT G1a = Guide_gravity(
+        w1 = guide[0][0], h1 = guide[0][1], w2 = guide[0][2], h2 = guide[0][3],
+        l = guide[0][4], G = gravityeffect,
+        mleft = m[0][0], mright = m[0][1], mtop = m[0][2], mbottom = m[0][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0,W=0)
+        AT (0.0, 0.0, 1.9) RELATIVE InstrArm
+
+COMPONENT G1b = Guide_gravity(
+        w1 = guide[1][0], h1 = guide[1][1], w2 = guide[1][2], h2 = guide[1][3],
+        l = guide[1][4], G = gravityeffect,
+        mleft = m[1][0], mright = m[1][1], mtop = m[1][2], mbottom = m[1][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0,W=0)
+        AT (0.0, 0.0, guide[0][4]) RELATIVE G1a
+
+COMPONENT G1c = Guide_gravity(
+        w1 = guide[2][0], h1 = guide[2][1], w2 = guide[2][2], h2 = guide[2][3],
+        l = guide[2][4], G = gravityeffect,
+        mleft = m[2][0], mright = m[2][1], mtop = m[2][2], mbottom = m[2][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0,W=0)
+        AT (0.0, 0.0, guide[1][4]) RELATIVE G1b
+
+COMPONENT G2a = Guide_gravity(
+        w1 = guide[3][0], h1 = guide[3][1], w2 = guide[3][2], h2 = guide[3][3],
+        l = guide[3][4], G = gravityeffect,
+        mleft = m[3][0], mright = m[3][1], mtop = m[3][2], mbottom = m[3][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0,W=0)
+        AT (0.0, 0.0, guide[2][4]) RELATIVE G1c
+
+COMPONENT G2b = Guide_gravity(
+        w1 = guide[4][0], h1 = guide[4][1], w2 = guide[4][2], h2 = guide[4][3],
+        l = guide[4][4], G = gravityeffect,
+        mleft = m[4][0], mright = m[4][1], mtop = m[4][2], mbottom = m[4][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0,W=0)
+        AT (0.0, 0.0, guide[3][4]) RELATIVE G2a
+
+COMPONENT G3 = Guide_gravity(
+        w1 = guide[5][0], h1 = guide[5][1], w2 = guide[5][2], h2 = guide[5][3],
+        l = guide[5][4], G = gravityeffect,
+        mleft = m[5][0], mright = m[5][1], mtop = m[5][2], mbottom = m[5][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0,W=0)
+        AT (0.0, 0.0, guide[4][4]+gapguides) RELATIVE G2b
+
+COMPONENT wavelength_NBOA=L_monitor(
+	nL=100,xwidth=guide[6][0],yheight= guide[6][1],restore_neutron=1,
+	filename="wavelength_NBOA",Lmin=1.27,Lmax=11.27)
+AT (0.0, 0.0, guide[5][4]+gapguides) RELATIVE G3
+
+COMPONENT wl_NBOA=L_monitor(
+        nL=250,xwidth=guide[6][0],yheight= guide[6][1],restore_neutron=1,
+        filename="wl_NBOA",Lmin=1.27,Lmax=51.27)
+AT (0.0, 0.0, guide[5][4]+gapguides) RELATIVE G3
+
+
+COMPONENT tof_NBOA = TOF_monitor(
+	restore_neutron=1, xwidth=guide[6][0], yheight=guide[6][1], filename="tof_NBOA",
+	tmin=0, tmax=404000, nt=16000)
+AT (0.0, 0.0, 0.001) RELATIVE PREVIOUS
+
+//===========================================================================================
+// PULSE SHAPING CHOPPER MODULE
+//___________________________________________________________________________________________
+// Pulse shaping chopper(s) (PWD)
+// We use the DiskChopper comp (thus, 2 for two types of slits), the MultiDiskChopper
+// contributed comp can be also an option
+
+COMPONENT arm_chopper1=Arm()
+        AT (0.0, 0.0,guide[5][4]+gapguides+gapchopperguide) RELATIVE G3
+
+COMPONENT PWD1 = DiskChopper(
+        radius = CHOP_rad[0], nu = CHOP_nu[0], nslit = CHOP_nslit[0],
+        theta_0 = CHOP_theta0[0], yheight = CHOP_yheight[0],
+        phase = CHOP_phase[0])
+        AT (0.0, 0.0, 0.0) RELATIVE arm_chopper1
+        //GROUP CH1s
+
+COMPONENT PWD2 = DiskChopper(
+        radius = CHOP_rad[1], nu = CHOP_nu[1], nslit = CHOP_nslit[1],
+        theta_0 = CHOP_theta0[1], yheight = CHOP_yheight[1],
+        phase = CHOP_phase[1])
+        AT (0.0, 0.0, gapchoppers) RELATIVE PWD1
+        //GROUP CH1s
+
+COMPONENT tof_PWD = TOF_monitor(
+	restore_neutron=1, xwidth=guide[6][0], yheight=guide[6][1], filename="tof_PWD",
+	tmin=0, tmax=400000, nt=20000)
+AT (0.0, 0.0, 0.001) RELATIVE PREVIOUS
+
+
+COMPONENT G4 = Guide_gravity(
+        w1 = guide[6][0], h1 = guide[6][1], w2 = guide[6][2], h2 = guide[6][3],
+        l = guide[6][4], G = gravityeffect,
+        mleft = m[6][0], mright = m[6][1], mtop = m[6][2], mbottom = m[6][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0,W=0)
+        AT (0.0, 0.0, gapchopperguide) RELATIVE PREVIOUS
+
+// Pulse selection chopper (PS) //
+
+COMPONENT arm_chopperPS=Arm()
+AT (0.0, 0.0, guide[6][4] + gapchopperguide) RELATIVE G4
+
+COMPONENT PS = DiskChopper(
+        radius = CHOP_rad[2], nu = CHOP_nu[2], nslit = CHOP_nslit[2],
+        theta_0 = CHOP_theta0[2], yheight = CHOP_yheight[2],
+        phase = CHOP_phase[2])
+        AT (0.0, 0.0, 0.0) RELATIVE arm_chopperPS
+
+
+COMPONENT G5 = Guide_gravity(
+        w1 = guide[7][0], h1 = guide[7][1], w2 = guide[7][2], h2 = guide[7][3],
+        l = guide[7][4], G = gravityeffect,
+        mleft = m[7][0], mright = m[7][1], mtop = m[7][2], mbottom = m[7][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0,W=0)
+        AT (0.0, 0.0, guide[6][4]+gapchopperguide+gapguides) RELATIVE G4
+
+COMPONENT G6 = Guide_gravity(
+        w1 = guide[8][0], h1 = guide[8][1], w2 = guide[8][2], h2 = guide[8][3],
+        l = guide[8][4], G=gravityeffect,
+        mleft = m[8][0], mright = m[8][1], mtop = m[8][2], mbottom = m[8][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0, W=0)
+        AT (0.0, 0.0, guide[7][4]+gapguides) RELATIVE PREVIOUS
+
+// G6_2
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_3
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_4
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_5
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_6
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_7
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_8
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_9
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_10
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_11
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_12
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_13
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_14
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_15
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_16
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// Bunker Wall: L=24.5-28 m //
+
+// G6_17
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_18
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_19
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_20
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_21
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_22
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_23
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_24
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_25
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_26
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_27
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_28
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_29
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_30
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_31
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_32
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_33
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_34
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_35
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// G6_36
+COMPONENT COPY(G6) = COPY(G6)
+        AT (0, 0, guide[8][4] + gapguides) RELATIVE PREVIOUS
+        ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+// Exit of CURVE at L=47.25 m, in D03 //
+
+// DETECTORS at exit of the CURVE //
+
+COMPONENT wavelength_curve=L_monitor(
+	nL=100,xwidth=guide[8][2],yheight= guide[8][3],restore_neutron=1,
+	filename="wavelength_curve",Lmin=1.27,Lmax=11.27)
+AT (0.0, 0.0, guide[8][4]+gapguides) RELATIVE PREVIOUS
+ROTATED (0, guide[8][4]/guide[8][8]*RAD2DEG, 0) RELATIVE PREVIOUS
+
+COMPONENT G7 = Guide_gravity(
+        w1 = guide[9][0], h1 = guide[9][1], w2 = guide[9][2], h2 = guide[9][3],
+        l = guide[9][4], G=gravityeffect,
+        mleft = m[9][0], mright = m[9][1], mtop = m[9][2], mbottom = m[9][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0, W=0)
+AT (0.0, 0.0, gapguides) RELATIVE PREVIOUS
+
+// FO-WBD CHOPPER
+// Chopper FO50 at L=50 m, in the middle of the trumpet: simultaneous band definition, harmonic rejector and frame overlap functionality
+COMPONENT arm_chopperFO=Arm()
+AT (0.0, 0.0, guide[9][4] + gapchopperguide) RELATIVE G7
+
+COMPONENT FO = DiskChopper(
+        radius = CHOP_rad[3], nu = CHOP_nu[3], nslit = CHOP_nslit[3],
+        theta_0 = CHOP_theta0[3], yheight = CHOP_yheight[3],
+        phase = CHOP_phase[3])
+        AT (0.0, 0.0, 0.0) RELATIVE arm_chopperFO
+
+// DETECTORS after the FO chopper - results are the same that the Trumpet monitors//
+
+// Horizontal trumpet: 2nd section 12.2 m of 15 m //
+COMPONENT G8 = Guide_gravity(
+        w1 = guide[10][0], h1 = guide[10][1], w2 = guide[10][2], h2 = guide[10][3],
+        l = guide[10][4], G=gravityeffect,
+        mleft = m[10][0], mright = m[10][1], mtop = m[10][2], mbottom = m[10][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0, W=0)
+AT (0.0, 0.0, gapchopperguide) RELATIVE PREVIOUS
+
+
+//DETECTORS at exit of the trumpet (at L=62.25 m from the moderator)
+
+COMPONENT wavelength_Trumpet=L_monitor(
+	nL=100,xwidth=guide[10][2],yheight= guide[10][3],restore_neutron=1,
+	filename="wavelength_trumpet",Lmin=1.27,Lmax=11.27)
+AT (0.0, 0.0, guide[10][4]+gapguides) RELATIVE G8
+
+//Long straight guide of 19 m
+COMPONENT G9a = Guide_gravity(
+        w1 = guide[11][0], h1 = guide[11][1], w2 = guide[11][2], h2 = guide[11][3],
+        l = guide[11][4], G = gravityeffect,
+        mleft = m[11][0], mright = m[11][1], mtop = m[11][2], mbottom = m[11][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0, W=0)
+        AT (0.0, 0.0, gapguides) RELATIVE PREVIOUS
+
+//Long straight guide of 61.25 m
+COMPONENT G9b = Guide_gravity(
+        w1 = guide[12][0], h1 = guide[12][1], w2 = guide[12][2], h2 = guide[12][3],
+        l = guide[12][4], G = gravityeffect,
+        mleft = m[12][0], mright = m[12][1], mtop = m[12][2], mbottom = m[12][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0, W=0)
+        AT (0.0, 0.0, guide[11][4] + gapguides) RELATIVE G9a
+
+//DETECTORS at exit of the Long Straight Guide (at 145 m from the moderator)
+
+COMPONENT wavelength_Straight=L_monitor(
+	nL=100,xwidth=guide[12][2],yheight= guide[12][3],restore_neutron=1,
+	filename="wavelength_Straight",Lmin=1.27,Lmax=11.27)
+AT (0.0, 0.0, guide[12][4]+gapguides) RELATIVE PREVIOUS
+
+COMPONENT wl_Straight=L_monitor(
+        nL=250,xwidth=guide[12][2],yheight= guide[12][3],restore_neutron=1,
+        filename="wl_Straight",Lmin=1.27,Lmax=51.27)
+AT (0.0, 0.0, 0.001) RELATIVE PREVIOUS
+
+//Focusing guide (starting at 145 m from the moderator)
+COMPONENT G10 = Guide_gravity(
+        w1 = guide[13][0], h1 = guide[13][1], w2 = guide[13][2], h2 = guide[13][3],
+        l = guide[13][4], G=gravityeffect,
+        mleft = m[13][0], mright = m[13][1], mtop = m[13][2], mbottom = m[13][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0, W=0)
+        AT (0.0, 0.0, gapguides) RELATIVE PREVIOUS
+
+COMPONENT G11 = Guide_gravity(
+        w1 = guide[14][0], h1 = guide[14][1], w2 = guide[14][2], h2 = guide[14][3],
+        l = guide[14][4], G=gravityeffect,
+        mleft = m[14][0], mright = m[14][1], mtop = m[14][2], mbottom = m[14][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0, W=0)
+        AT (0.0, 0.0, guide[13][4] + gapguides) RELATIVE G10
+
+COMPONENT G12 = Guide_gravity(
+        w1 = guide[15][0], h1 = guide[15][1], w2 = guide[15][2], h2 = guide[15][3],
+        l = guide[15][4], G=gravityeffect,
+        mleft = m[15][0], mright = m[15][1], mtop = m[15][2], mbottom = m[15][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0, W=0)
+        AT (0.0, 0.0, guide[14][4] + gapguides) RELATIVE G11
+
+COMPONENT G13 = Guide_gravity(
+        w1 = guide[16][0], h1 = guide[16][1], w2 = guide[16][2], h2 = guide[16][3],
+        l = guide[16][4], G=gravityeffect,
+        mleft = m[16][0], mright = m[16][1], mtop = m[16][2], mbottom = m[16][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0, W=0)
+        AT (0.0, 0.0, guide[15][4] + gapguides) RELATIVE G12
+
+COMPONENT G14 = Guide_gravity(
+        w1 = guide[17][0], h1 = guide[17][1], w2 = guide[17][2], h2 = guide[17][3],
+        l = guide[17][4], G=gravityeffect,
+        mleft = m[17][0], mright = m[17][1], mtop = m[17][2], mbottom = m[17][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0, W=0)
+        AT (0.0, 0.0, guide[16][4] + gapguides) RELATIVE G13
+
+COMPONENT G15 = Guide_gravity(
+        w1 = guide[18][0], h1 = guide[18][1], w2 = guide[18][2], h2 = guide[18][3],
+        l = guide[18][4], G=gravityeffect,
+        mleft = m[18][0], mright = m[18][1], mtop = m[18][2], mbottom = m[18][3],
+        alpha=0,atop=0,abottom=0,aleft=0,aright=0, W=0)
+        AT (0.0, 0.0, guide[17][4] + gapguides) RELATIVE G14
+
+
+COMPONENT arm_guide_end = Arm()
+        AT (0.0, 0.0, guide[18][4]) RELATIVE G15
+
+COMPONENT EndGuideMask = Slit(xmin=-0.0217*0.5, xmax=0.0217*0.5, ymin=-0.0199*0.5, ymax=0.0199*0.5)
+        AT (0.0, 0.0, 0.001) RELATIVE arm_guide_end
+
+
+//-------------------------------------------------------------------------
+// START> MONITORS BETWEEN GUIDE AND SAMPLE
+//-------------------------------------------------------------------------
+
+COMPONENT between_guide_and_sample_wvl = L_monitor(
+	nL=100,xwidth=0.03,yheight= 0.03,restore_neutron=1,
+	filename="between_guide_and_sample_wvl",Lmin=1.27,Lmax=11.27)
+AT (0.0, 0.0, 0.100) RELATIVE arm_guide_end
+
+COMPONENT between_guide_and_sample_psd = PSD_monitor(
+	restore_neutron=1,xwidth=0.1,yheight=0.1,nx=100,ny=100,
+        filename="between_guide_and_sample_psd")
+AT (0.0, 0.0, 0.110) RELATIVE arm_guide_end
+
+COMPONENT divpos_1d_between_G_and_S = Monitor_nD(
+	restore_neutron=1, xwidth=0.05, yheight=0.05, filename="divpos_1d_between_G_and_S",
+options=
+        "multiple hdiv all bins=1000, limits=[-5.0,5.0]"
+        "multiple vdiv all bins=1000, limits=[-5.0,5.0]")
+AT (0.0, 0.0, 0.100) RELATIVE PREVIOUS
+
+COMPONENT tof_BGAS = TOF_monitor(
+	restore_neutron=1, xwidth=0.2, yheight=0.2, filename="tof_BGAS",
+	tmin=30000, tmax=830000, nt=4000)
+AT (0.0, 0.0, 0.001) RELATIVE PREVIOUS
+
+COMPONENT VS = MCPL_output(
+    filename = "virtual_source_beforesample")
+AT (0.0, 0.0, 0.001) RELATIVE PREVIOUS
+
+
+//-------------------------------------------------------------------------
+// END>  MONITORS BETWEEN GUIDE AND SAMPLE
+//-------------------------------------------------------------------------
+
+
+
+
+
+//-------------------------------------------------------------------------
+// START>  SAMPLE
+//-------------------------------------------------------------------------
+
+//--- arm to place the sample with respect to the guide
+COMPONENT arm_guide_sample = Arm()
+        AT (0.0, 0.0, guide[18][4] + dist_guide_sample) RELATIVE G15
+
+//--- sample
+SPLIT 1000
+COMPONENT Sample = Tunneling_sample(
+  thickness = 0.005,
+  radius = 0.015,
+  yheight=0.01,
+  f_QE = f_QE,
+  f_tun = f_tun,
+  gamma = gamma) 
+AT (0,0,0.000) RELATIVE arm_guide_sample //PREVIOUS
+EXTEND
+%{
+  t0_SAM = t;  // chrono
+
+  if (!SCATTERED) ABSORB; //Virtual Perfect BeamStop
+
+  // Calculate theta in zx plane, 0 being forward, 180 backwards, 90 in x direction
+  n_theta = 0; // Default option in case vx or vz == 0, could add cases but shouldn't happen
+  n_zheta = 0; // Default option if y=0 (cylindical z-coord is heigth)
+  if (vx > 0.0 && vz > 0.0) {
+      n_theta = atan(vx/vz)*RAD2DEG;
+  } else if (vx > 0.0 && vz < 0.0) {
+      n_theta = 180.0 + atan(vx/vz)*RAD2DEG;  // BUG??  180 - atan??
+  } else if (vx < 0.0 && vz < 0.0) {
+      n_theta = 180.0 + atan(vx/vz)*RAD2DEG;
+  } else if (vx < 0.0 && vz > 0.0) {
+      n_theta = 360.0 + atan(vx/vz)*RAD2DEG;   // BUG?? 360 - atan??
+  }
+
+  // flagging the up or down banks
+  // according to vy direction
+  if (vy>0){
+      n_zheta=1; //   1= for UPPER bank, cyl-coord "zheta" (ie in general, upside) if vy component positive
+  }
+  else if(vy<0){
+      n_zheta=-1; // -1= for LOWER bank
+  } 
+
+//--- arm to refer any concentric element: radcol, analyzer, dets
+COMPONENT arm_sample = Arm()
+     AT (0,0,0 ) RELATIVE Sample
+
+//pos-monitor
+// a copy of the previous to make clear when radcol is on
+COMPONENT after_RADCOL = Monitor_nD(
+    options  = "theta limits=[9,160] bins=180 y limits=[-1.5, 1.5] bins=200, outgoing",
+    filename = "after_RADCOL",
+    yheight  = 4*0.5,
+    restore_neutron = 1,
+    radius   = 1.0)
+AT (0, 0, 0) RELATIVE arm_sample
+
+
+//-------------------------------------------------------------------------
+// ANALYZER
+//-------------------------------------------------------------------------
+
+// upper right bank
+
+COMPONENT An1_rot_axis=Arm() // 1st upper panel arm
+AT (0,0,0) RELATIVE Sample
+ROTATED (0,ROT1,0) RELATIVE Sample
+COMPONENT An11_rot_axis=Arm() // 1st lower paner arm
+AT (0,0,0) RELATIVE Sample
+ROTATED (0,ROT1,0) RELATIVE Sample
+//
+COMPONENT An2_rot_axis=Arm()
+AT (0,0,0) RELATIVE Sample
+ROTATED (0,ROT1-dROT,0) RELATIVE Sample
+COMPONENT An22_rot_axis=Arm() // 1st lower paner arm
+AT (0,0,0) RELATIVE Sample
+ROTATED (0,ROT1-dROT,0) RELATIVE Sample
+//
+COMPONENT An3_rot_axis=Arm()
+AT (0,0,0) RELATIVE Sample
+ROTATED (0,ROT1+dROT,0) RELATIVE Sample
+COMPONENT An33_rot_axis=Arm()
+AT (0,0,0) RELATIVE Sample
+ROTATED (0,ROT1+dROT,0) RELATIVE Sample
+//
+
+// upper left bank
+COMPONENT An4_rot_axis=Arm()
+AT (0,0,0) RELATIVE Sample
+ROTATED (0,ROT2,0) RELATIVE Sample
+COMPONENT An44_rot_axis=Arm()
+AT (0,0,0) RELATIVE Sample
+ROTATED (0,ROT2,0) RELATIVE Sample
+//
+COMPONENT An5_rot_axis=Arm()
+AT (0,0,0) RELATIVE Sample
+ROTATED (0,ROT2-dROT,0) RELATIVE Sample
+COMPONENT An55_rot_axis=Arm()
+AT (0,0,0) RELATIVE Sample
+ROTATED (0,ROT2-dROT,0) RELATIVE Sample
+//
+COMPONENT An6_rot_axis=Arm()
+AT (0,0,0) RELATIVE Sample
+ROTATED (0,ROT2+dROT,0) RELATIVE Sample
+COMPONENT An66_rot_axis=Arm()
+AT (0,0,0) RELATIVE Sample
+ROTATED (0,ROT2+dROT,0) RELATIVE Sample
+
+
+COMPONENT An1_rot_axis2=Arm() // 1st upper panel
+AT (0, 0, ANA_RAD*1.0) RELATIVE An1_rot_axis
+ROTATED (ANA_ROT*1.0,0,0) RELATIVE An1_rot_axis   // <--- beware the sign: upper bank is (+ANA_ROT)
+
+COMPONENT An11_rot_axis2=Arm() // 1st lower panel
+AT (0, 0, ANA_RAD*1.0) RELATIVE An11_rot_axis     
+ROTATED (-ANA_ROT*1.0,0,0) RELATIVE An11_rot_axis 
+//
+COMPONENT An2_rot_axis2=Arm()
+AT (0, 0, ANA_RAD) RELATIVE An2_rot_axis
+ROTATED (ANA_ROT,0,0) RELATIVE An2_rot_axis
+COMPONENT An22_rot_axis2=Arm()
+AT (0, 0, ANA_RAD) RELATIVE An22_rot_axis
+ROTATED (-ANA_ROT,0,0) RELATIVE An22_rot_axis
+//
+COMPONENT An3_rot_axis2=Arm()
+AT (0,0,ANA_RAD) RELATIVE An3_rot_axis
+ROTATED (ANA_ROT,0,0) RELATIVE An3_rot_axis
+COMPONENT An33_rot_axis2=Arm()
+AT (0,0,ANA_RAD) RELATIVE An33_rot_axis
+ROTATED (-ANA_ROT,0,0) RELATIVE An33_rot_axis
+//
+
+//
+// upper left bank
+//
+COMPONENT An4_rot_axis2=Arm()
+AT (0, 0, ANA_RAD) RELATIVE An4_rot_axis
+ROTATED (ANA_ROT,0,0) RELATIVE An4_rot_axis
+COMPONENT An44_rot_axis2=Arm()
+AT (0, 0, ANA_RAD) RELATIVE An44_rot_axis
+ROTATED (-ANA_ROT,0,0) RELATIVE An44_rot_axis
+//
+COMPONENT An5_rot_axis2=Arm()
+AT (0, 0, ANA_RAD) RELATIVE An5_rot_axis
+ROTATED (ANA_ROT,0,0) RELATIVE An5_rot_axis
+COMPONENT An55_rot_axis2=Arm()
+AT (0, 0, ANA_RAD) RELATIVE An55_rot_axis
+ROTATED (-ANA_ROT,0,0) RELATIVE An55_rot_axis
+//
+COMPONENT An6_rot_axis2=Arm()
+AT (0,0,ANA_RAD) RELATIVE An6_rot_axis
+ROTATED (ANA_ROT,0,0) RELATIVE An6_rot_axis
+COMPONENT An66_rot_axis2=Arm()
+AT (0,0,ANA_RAD) RELATIVE An66_rot_axis
+ROTATED (-ANA_ROT,0,0) RELATIVE An66_rot_axis
+//
+
+COMPONENT An1 = PerfectCrystallocal(
+  tau = q_si111,
+  radius = ANA_RAD,
+  ttmin=-APX/2/ANA_RAD/DEG2RAD,
+  ttmax=APX/2/ANA_RAD/DEG2RAD,
+  phimin=-APY/2/ANA_RAD/DEG2RAD,
+  phimax=APY/2/ANA_RAD/DEG2RAD,
+  facette = ANA_Facette,  
+  facette_xi = ANA_Facette_xi,
+  debyescherrer = 0,          
+  exclusive = 0,              
+  R0 = 1.0,                   
+  sigma=0.24e-3,
+  centerfocus=0
+)
+WHEN ((n_theta > (ROT1 - 0.5*dROT)) && (n_theta < (ROT1 + 0.5*dROT)) && (n_zheta == 1))
+AT (0, ANA_ELE*1.0, 0) RELATIVE An1_rot_axis2
+EXTEND %{
+ //  printf("\nAngle range for PANEL 1: %f – %f deg\n",
+   //      (ROT1 - 0.5*dROT), (ROT1 + 0.5*dROT));
+  if (!SCATTERED) ABSORB;
+%}
+
+COMPONENT An11 = PerfectCrystallocal(
+  tau = q_si111,
+  radius = ANA_RAD,
+  ttmin=-APX/2/ANA_RAD/DEG2RAD,
+  ttmax=APX/2/ANA_RAD/DEG2RAD,
+  phimin=-APY/2/ANA_RAD/DEG2RAD,
+  phimax=APY/2/ANA_RAD/DEG2RAD,
+  facette = ANA_Facette,  
+  facette_xi = ANA_Facette_xi,
+  debyescherrer = 0,          
+  exclusive = 0,              
+  R0 = 1.0,                   
+  sigma=0.24e-3,
+  centerfocus=0
+)
+WHEN ((n_theta > (ROT1 - 0.5*dROT)) && (n_theta < (ROT1 + 0.5*dROT)) && (n_zheta == -1))
+AT (0, -ANA_ELE*1.0, 0) RELATIVE An11_rot_axis2
+EXTEND %{
+ //  printf("\nAngle range for PANEL 11: %f – %f deg\n",
+  //       (ROT1 - 0.5*dROT), (ROT1 + 0.5*dROT));
+  if (!SCATTERED) ABSORB;
+%}
+
+
+COMPONENT An2 = PerfectCrystallocal(
+  tau = q_si111,
+  radius = ANA_RAD,
+  ttmin=-APX/2/ANA_RAD/DEG2RAD,
+  ttmax=APX/2/ANA_RAD/DEG2RAD,
+  phimin=-APY/2/ANA_RAD/DEG2RAD,
+  phimax=APY/2/ANA_RAD/DEG2RAD,
+  facette = ANA_Facette, 
+  facette_xi = ANA_Facette_xi, 
+  debyescherrer = 0,          
+  exclusive = 0,              
+  R0 = 1.0,                   
+  sigma=0.24e-3,
+  centerfocus=0
+)
+  WHEN ((n_theta >= ROT1 - 1.5*dROT && n_theta < ROT1 - 0.5*dROT) && (n_zheta == 1))
+  AT (0, ANA_ELE*1, 0) RELATIVE An2_rot_axis2
+EXTEND %{
+  // printf("\n angle range for PANEL 2: %f, %f\n", ((ROT1 - 1.5*dROT)),  ((ROT1 - 0.5*dROT)) ); // (9.48, 35.40) deg
+  if (!SCATTERED) ABSORB; 
+%}
+
+COMPONENT An22 = PerfectCrystallocal(
+  tau = q_si111,
+  radius = ANA_RAD,
+  ttmin=-APX/2/ANA_RAD/DEG2RAD,
+  ttmax=APX/2/ANA_RAD/DEG2RAD,
+  phimin=-APY/2/ANA_RAD/DEG2RAD,
+  phimax=APY/2/ANA_RAD/DEG2RAD,
+  facette = ANA_Facette, 
+  facette_xi = ANA_Facette_xi, 
+  debyescherrer = 0,          
+  exclusive = 0,              
+  R0 = 1.0,                   
+  sigma=0.24e-3,
+  centerfocus=0
+)
+  WHEN ((n_theta >= ROT1 - 1.5*dROT && n_theta < ROT1 - 0.5*dROT) && (n_zheta == -1))
+  AT (0, -ANA_ELE*1, 0) RELATIVE An22_rot_axis2
+EXTEND %{
+  // printf("\n angle range for PANEL 22: %f, %f\n", ((ROT1 - 1.5*dROT)),  ((ROT1 - 0.5*dROT)) ); // (9.48, 35.40) deg
+  if (!SCATTERED) ABSORB; 
+%}
+
+
+COMPONENT An3 = PerfectCrystallocal(
+  tau = q_si111,
+  radius = ANA_RAD,
+  ttmin=-APX/2/ANA_RAD/DEG2RAD,
+  ttmax=APX/2/ANA_RAD/DEG2RAD,
+  phimin=-APY/2/ANA_RAD/DEG2RAD,
+  phimax=APY/2/ANA_RAD/DEG2RAD,
+  facette = ANA_Facette,   
+  facette_xi = ANA_Facette_xi,
+  debyescherrer = 0,          
+  exclusive = 0,              
+  R0 = 1.0,                   
+  sigma=0.24e-3,
+  centerfocus=0
+)
+  WHEN ((n_theta >= ROT1 + 0.5*dROT && n_theta < ROT1 + 1.5*dROT) && (n_zheta == 1))
+  AT (0, ANA_ELE*1, 0) RELATIVE An3_rot_axis2
+EXTEND %{
+  // printf("\n angle range for PANEL 3: %f, %f\n", ((ROT1 + 0.5*dROT)),  ((ROT1 + 1.5*dROT)) ); // (61.32, 87.24) deg
+  if (!SCATTERED) ABSORB; 
+%}
+
+
+COMPONENT An33 = PerfectCrystallocal(
+  tau = q_si111,
+  radius = ANA_RAD,
+  ttmin=-APX/2/ANA_RAD/DEG2RAD,
+  ttmax=APX/2/ANA_RAD/DEG2RAD,
+  phimin=-APY/2/ANA_RAD/DEG2RAD,
+  phimax=APY/2/ANA_RAD/DEG2RAD,
+  facette = ANA_Facette,   
+  facette_xi = ANA_Facette_xi,
+  debyescherrer = 0,          
+  exclusive = 0,              
+  R0 = 1.0,                   
+  sigma=0.24e-3,
+  centerfocus=0
+)
+  WHEN ((n_theta >= ROT1 + 0.5*dROT && n_theta < ROT1 + 1.5*dROT) && (n_zheta == -1))
+  AT (0, -ANA_ELE*1, 0) RELATIVE An33_rot_axis2
+EXTEND %{
+  // printf("\n angle range for PANEL 33: %f, %f\n", ((ROT1 + 0.5*dROT)),  ((ROT1 + 1.5*dROT)) ); // (61.32, 87.24) deg
+  if (!SCATTERED) ABSORB; 
+%}
+
+
+COMPONENT An4 = PerfectCrystallocal(
+  tau = q_si111,
+  radius = ANA_RAD,
+  ttmin=-APX/2/ANA_RAD/DEG2RAD,
+  ttmax=APX/2/ANA_RAD/DEG2RAD,
+  phimin=-APY/2/ANA_RAD/DEG2RAD,
+  phimax=APY/2/ANA_RAD/DEG2RAD,
+  facette = ANA_Facette,  
+  facette_xi = ANA_Facette_xi,
+  debyescherrer = 0,          
+  exclusive = 0,              
+  R0 = 1.0,                   
+  sigma=0.24e-3,
+  centerfocus=0
+)
+WHEN ( (n_theta >= (ROT2 - 0.5*dROT)) && (n_theta < (ROT2 + 0.5*dROT) )  && (n_zheta == 1) ) // nosesne
+AT (0, ANA_ELE*1, 0) RELATIVE An4_rot_axis2
+EXTEND %{
+  if (!SCATTERED) ABSORB; 
+%}
+
+
+COMPONENT An44 = PerfectCrystallocal(
+  tau = q_si111,
+  radius = ANA_RAD,
+  ttmin=-APX/2/ANA_RAD/DEG2RAD,
+  ttmax=APX/2/ANA_RAD/DEG2RAD,
+  phimin=-APY/2/ANA_RAD/DEG2RAD,
+  phimax=APY/2/ANA_RAD/DEG2RAD,
+  facette = ANA_Facette,  
+  facette_xi = ANA_Facette_xi,
+  debyescherrer = 0,          
+  exclusive = 0,              
+  R0 = 1.0,                   
+  sigma=0.24e-3,
+  centerfocus=0
+)
+WHEN ( (n_theta >= (ROT2 - 0.5*dROT)) && (n_theta < (ROT2 + 0.5*dROT) )  && (n_zheta == -1) ) // nosesne
+AT (0, -ANA_ELE*1, 0) RELATIVE An44_rot_axis2
+EXTEND %{
+  if (!SCATTERED) ABSORB; 
+%}
+
+COMPONENT An5 = PerfectCrystallocal(
+  tau = q_si111,
+  radius = ANA_RAD,
+  ttmin=-APX/2/ANA_RAD/DEG2RAD,
+  ttmax=APX/2/ANA_RAD/DEG2RAD,
+  phimin=-APY/2/ANA_RAD/DEG2RAD,
+  phimax=APY/2/ANA_RAD/DEG2RAD,
+  facette = ANA_Facette,  
+  facette_xi = ANA_Facette_xi,
+  debyescherrer = 0,          
+  exclusive = 0,              
+  R0 = 1.0,                   
+  sigma=0.24e-3,
+  centerfocus=0
+)
+  WHEN ((n_theta >= ROT2 - 1.5*dROT && n_theta < ROT2 - 0.5*dROT) && (n_zheta == 1))
+  AT (0, ANA_ELE*1, 0) RELATIVE An5_rot_axis2
+EXTEND %{
+  if (!SCATTERED) ABSORB; 
+%}
+
+COMPONENT An55 = PerfectCrystallocal(
+  tau = q_si111,
+  radius = ANA_RAD,
+  ttmin=-APX/2/ANA_RAD/DEG2RAD,
+  ttmax=APX/2/ANA_RAD/DEG2RAD,
+  phimin=-APY/2/ANA_RAD/DEG2RAD,
+  phimax=APY/2/ANA_RAD/DEG2RAD,
+  facette = ANA_Facette,  
+  facette_xi = ANA_Facette_xi,
+  debyescherrer = 0,          
+  exclusive = 0,              
+  R0 = 1.0,                   
+  sigma=0.24e-3,
+  centerfocus=0
+)
+  WHEN ((n_theta >= ROT2 - 1.5*dROT && n_theta < ROT2 - 0.5*dROT) && (n_zheta == -1))
+  AT (0, -ANA_ELE*1, 0) RELATIVE An55_rot_axis2
+EXTEND %{
+  if (!SCATTERED) ABSORB; 
+%}
+
+COMPONENT An6 = PerfectCrystallocal(
+  tau = q_si111,
+  radius = ANA_RAD,
+  ttmin=-APX/2/ANA_RAD/DEG2RAD,
+  ttmax=APX/2/ANA_RAD/DEG2RAD,
+  phimin=-APY/2/ANA_RAD/DEG2RAD,
+  phimax=APY/2/ANA_RAD/DEG2RAD,
+  facette = ANA_Facette,  
+  facette_xi = ANA_Facette_xi,
+  debyescherrer = 0,          
+  exclusive = 0,              
+  R0 = 1.0,                   
+  sigma=0.24e-3,
+  centerfocus=0
+)
+  WHEN ((n_theta >= ROT2 + 0.5*dROT && n_theta < ROT2 + 1.5*dROT) && (n_zheta == 1))
+  AT (0, ANA_ELE*1, 0) RELATIVE An6_rot_axis2
+EXTEND %{
+  if (!SCATTERED) ABSORB; 
+%}
+
+COMPONENT An66 = PerfectCrystallocal(
+  tau = q_si111,
+  radius = ANA_RAD,
+  ttmin=-APX/2/ANA_RAD/DEG2RAD,
+  ttmax=APX/2/ANA_RAD/DEG2RAD,
+  phimin=-APY/2/ANA_RAD/DEG2RAD,
+  phimax=APY/2/ANA_RAD/DEG2RAD,
+  facette = ANA_Facette,  
+  facette_xi = ANA_Facette_xi,
+  debyescherrer = 0,          
+  exclusive = 0,              
+  R0 = 1.0,                   
+  sigma=0.24e-3,
+  centerfocus=0
+)
+  WHEN ((n_theta >= ROT2 + 0.5*dROT && n_theta < ROT2 + 1.5*dROT) && (n_zheta == -1))
+  AT (0, -ANA_ELE*1, 0) RELATIVE An66_rot_axis2
+EXTEND %{
+  if (!SCATTERED) ABSORB; 
+%}
+
+COMPONENT ray_stopper = Arm()
+
+AT (0,0,1e-6) RELATIVE arm_sample
+
+EXTEND %{
+
+  if (fabs(x) < 0.05 && fabs(y) < 0.05 && fabs(z) < 0.05) ABSORB;              
+
+%} 
+
+
+COMPONENT detector_inner = Monitor_nD( 
+    yheight  = 2.0,
+    radius   = 1*0.24,
+    options  = "banana, multiple, theta limits=[0,180] bins=5, lambda limits=[4, 7] bins=100, time limits=[0,5] bins=100, y limits=[-1, 1] bins=100, incoming, list all neutrons",
+    filename = "detector_inner",
+    restore_neutron=1.0)
+AT (0, 0, 0) RELATIVE arm_sample
+EXTEND %{
+%}
+
+//------------------
+// write chopper parameters into the h5 file
+COMPONENT chopper_settings = ChopperSettingsNexus(
+  chopperfile = chopperfile,
+  filename    = "chopper_settings"
+)
+AT (0, 0, 0) ABSOLUTE
+//------------------
+
+/* The END token marks the instrument definition end */
+END
