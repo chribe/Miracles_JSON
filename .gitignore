@@ -1,0 +1,10 @@
+*.ipynb
+Lokidetector.json
+*.hdf
+README.md
+*.png
+mcstas2json.py
+*.PDF
+__pycache__/
+ESS_MIRACLES_kafkatubes.instr
+lokidetector_1.json
